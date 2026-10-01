@@ -1,0 +1,30 @@
+[package]
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
+name = "colls"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+description = "Shared state and maps through small closures"
+keywords = ["shared", "state", "async", "concurrency", "no-std"]
+categories = ["concurrency", "no-std"]
+
+[lib]
+doctest = false
+
+[features]
+default = ["std"]
+std = ["dep:parking_lot"]
+
+[dependencies]
+er.workspace = true
+hashbrown.workspace = true
+parking_lot = { workspace = true, optional = true }
+
+[dev-dependencies]
+er = { workspace = true, features = ["test", "src_locations"] }
+
+[lints]
+workspace = true
