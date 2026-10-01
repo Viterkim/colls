@@ -46,6 +46,18 @@ Keep the key to skip hashing it next time, or just ignore it. The value stays in
 
 ## Docs
 
+### Repo links
+
 [Examples](colls/docs/examples.md)
 
 [Platform setup](colls/docs/platforms.md)
+
+[GitHub Repo](https://github.com/Viterkim/colls)
+
+### External links
+
+[Docs.rs](https://docs.rs/colls/latest/colls/)
+
+[Crates.io for the lib](https://crates.io/crates/colls)
+
+[Libs.rs](https://lib.rs/crates/colls)
