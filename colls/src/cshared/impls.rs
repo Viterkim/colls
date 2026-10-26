@@ -1,4 +1,4 @@
-use super::{CShared, CSharedGroup, CSharedGroupError, HeldLock, LockKey, SharedEntry};
+use super::{CShared, CSharedGroup, CSharedGroupError, HeldLock, SharedEntry};
 use crate::storage::{Ptr, Storage, borrow};
 use core::array;
 
@@ -42,44 +42,51 @@ impl<T: Default> Default for CShared<T> {
 
 impl<'a, T, const N: usize> CSharedGroup<'a, T, N> {
     pub fn new(shared: [&'a CShared<T>; N]) -> Result<Self, CSharedGroupError> {
-        let mut ordered = array::from_fn(|input_index| {
-            let shared = shared[input_index];
-
-            SharedEntry {
-                key: LockKey::new(shared),
-                input_index,
-                shared,
-            }
+        let mut ordered = array::from_fn(|input_index| SharedEntry {
+            input_index,
+            shared: shared[input_index],
         });
 
-        ordered.sort_unstable_by_key(|entry| entry.key);
+        ordered.sort_unstable_by_key(|entry| Ptr::as_ptr(&entry.shared.inner).addr());
 
-        if ordered.windows(2).any(|pair| pair[0].key == pair[1].key) {
-            Err(CSharedGroupError)
-        } else {
-            Ok(Self { ordered })
+        if ordered
+            .windows(2)
+            .any(|pair| pair[0].shared.is_same_ptr(pair[1].shared))
+        {
+            return Err(CSharedGroupError);
         }
+
+        Ok(Self { ordered })
     }
 
     pub async fn with<R>(&self, f: impl FnOnce([&mut T; N]) -> R) -> R {
         // Same address order everywhere, even if the caller reverses the values.
-        let mut held = array::from_fn(|index| {
-            let entry = &self.ordered[index];
+        if N <= 2 {
+            let mut held = array::from_fn(|index| {
+                let entry = &self.ordered[index];
 
-            HeldLock {
-                input_index: entry.input_index,
-                guard: borrow(&entry.shared.inner),
-            }
-        });
+                HeldLock {
+                    input_index: entry.input_index,
+                    guard: borrow(&entry.shared.inner),
+                }
+            });
 
-        held.sort_unstable_by_key(|lock| lock.input_index);
+            held.sort_unstable_by_key(|lock| lock.input_index);
 
-        f(held.each_mut().map(|lock| &mut *lock.guard))
-    }
-}
+            return f(held.each_mut().map(|lock| &mut *lock.guard));
+        }
 
-impl LockKey {
-    fn new<T>(shared: &CShared<T>) -> Self {
-        Self(Ptr::as_ptr(&shared.inner).addr())
+        let mut held = self
+            .ordered
+            .each_ref()
+            .map(|entry| borrow(&entry.shared.inner));
+        let mut values: [Option<&mut T>; N] = array::from_fn(|_| None);
+
+        for (entry, guard) in self.ordered.iter().zip(&mut held) {
+            values[entry.input_index] = Some(&mut **guard);
+        }
+
+        // new() keeps exactly one entry for each input position.
+        f(values.each_mut().map(|value| &mut *value.as_mut_slice()[0]))
     }
 }

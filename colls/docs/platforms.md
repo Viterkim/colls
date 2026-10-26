@@ -6,7 +6,7 @@ For `no_std + alloc`, or an app that stays on one thread:
 
 ```toml
 [dependencies]
-colls = { version = "0.0.1", default-features = false }
+colls = { version = "0.0.2", default-features = false }
 ```
 
 That uses `Rc<RefCell<_>>` behind the same `.with()` calls. Spawn its handles on a local executor, like Tokio's `LocalSet`. If another dependency enables `colls/std`, Cargo picks the default backend for everyone using that version.

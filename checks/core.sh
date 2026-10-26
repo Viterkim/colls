@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
 cargo fmt --all --check
 
-cargo +1.89.0 check --workspace --all-targets
-cargo +1.89.0 test --workspace
-cargo +1.89.0 test --workspace --no-default-features
+cargo +1.95.0 check --workspace --all-targets
+cargo +1.95.0 test --workspace
+cargo +1.95.0 test --workspace --no-default-features
 
 cargo check --workspace --all-targets
 cargo test --workspace

@@ -6,6 +6,7 @@ mod tests;
 
 use crate::storage::{Ptr, Storage, StorageGuard, Weak};
 use alloc::boxed::Box;
+use core::ops::Range;
 use er::Er;
 use hashbrown::HashTable;
 
@@ -42,8 +43,14 @@ struct MapEntry<K, V> {
     value: V,
 }
 
+struct MapLookup<'a, I> {
+    input: &'a I,
+    hash: u64,
+    shard: usize,
+}
+
 struct HeldShard<'a, K, V> {
-    index: usize,
+    inputs: Range<usize>,
     guard: StorageGuard<'a, HashTable<MapEntry<K, V>>>,
 }
 

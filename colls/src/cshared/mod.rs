@@ -13,11 +13,7 @@ pub struct CSharedGroup<'a, T, const N: usize> {
     ordered: [SharedEntry<'a, T>; N],
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct LockKey(usize);
-
 struct SharedEntry<'a, T> {
-    key: LockKey,
     input_index: usize,
     shared: &'a CShared<T>,
 }

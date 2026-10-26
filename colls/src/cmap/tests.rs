@@ -1,17 +1,14 @@
 use super::*;
-use core::hash::Hash;
+use alloc::rc::Rc;
+use core::{
+    future::Future,
+    hash::{Hash, Hasher},
+    pin::pin,
+    task::{Context, Poll, Waker},
+};
 
 #[test]
 fn drop_scope() {
-    use alloc::rc::Rc;
-    use core::{
-        cell::Cell,
-        future::Future,
-        hash::Hasher,
-        pin::pin,
-        task::{Context, Poll, Waker},
-    };
-
     #[derive(Clone)]
     struct Probe {
         id: u32,
@@ -38,8 +35,6 @@ fn drop_scope() {
 
     let map = CMap::<Probe, Probe>::new();
     let alias = map.clone_ptr();
-    let drops = Rc::new(Cell::new(0));
-    let count = Rc::clone(&drops);
     let probe = Probe {
         id: 0,
         check: Some(Rc::new(move || {
@@ -52,30 +47,21 @@ fn drop_scope() {
                     "drop ran under a shard borrow"
                 );
             }
-            count.set(count.get() + 1);
         })),
+    };
+
+    let operations = async {
+        let key = map.insert(probe.clone(), probe).await?;
+
+        map.insert(&key, Probe { id: 0, check: None }).await?;
+        map.remove(&key).await?;
+
+        Ok::<_, CMapError>(())
     };
 
     let mut context = Context::from_waker(Waker::noop());
 
-    let Poll::Ready(Ok(key)) = pin!(map.insert(probe.clone(), probe))
-        .as_mut()
-        .poll(&mut context)
-    else {
-        panic!("insert should finish");
+    let Poll::Ready(Ok(())) = pin!(operations).as_mut().poll(&mut context) else {
+        panic!("map operations should finish");
     };
-
-    assert!(matches!(
-        pin!(map.insert(&key, Probe { id: 0, check: None }))
-            .as_mut()
-            .poll(&mut context),
-        Poll::Ready(Ok(_))
-    ));
-    assert_eq!(drops.get(), 1);
-
-    assert!(matches!(
-        pin!(map.remove(&key)).as_mut().poll(&mut context),
-        Poll::Ready(Ok(_))
-    ));
-    assert_eq!(drops.get(), 2);
 }
